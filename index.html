@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Tournoi Baby-Foot</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>Tournoi Baby-Foot</h1>
+
+<section id="participants">
+  <h2>1. Participants</h2>
+  <label>Attaquants (séparés par des virgules) :</label>
+  <input type="text" id="attaquants">
+  <br>
+  <label>Défenseurs (séparés par des virgules) :</label>
+  <input type="text" id="defenseurs">
+  <br>
+  <button onclick="enregistrerParticipants()">Enregistrer</button>
+</section>
+
+<section id="dyp">
+  <h2>2. Manche DYP</h2>
+  <button onclick="genererDYP()">Générer Manche DYP</button>
+  <div id="dypResult"></div>
+</section>
+
+<section id="finale">
+  <h2>3. Phase finale</h2>
+  <button onclick="demarrerFinale()">Démarrer Phase Finale</button>
+  <div id="matchActuel"></div>
+</section>
+
+<section id="classement">
+  <h2>Classement</h2>
+  <div id="classementTable"></div>
+</section>
+
+<script src="script.js"></script>
+</body>
+</html>
