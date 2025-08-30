@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tournoi Baby-Foot — Double Élimination</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Tournoi Baby-Foot</h1>
+
+  <!-- Inscriptions -->
+  <section id="inscriptions">
+    <h2>1 — Inscriptions</h2>
+    <div class="row">
+      <input id="nomJoueur" type="text" placeholder="Nom du joueur" />
+      <select id="roleJoueur">
+        <option value="A">Attaquant</option>
+        <option value="D">Défenseur</option>
+        <option value="B">Les deux</option>
+      </select>
+      <button id="btnAdd">Ajouter</button>
+    </div>
+
+    <div id="listeParticipants"></div>
+
+    <div class="actions">
+      <button id="btnReset" class="secondary">Réinitialiser le tournoi</button>
+    </div>
+  </section>
+
+  <!-- Qualifs DYP -->
+  <section id="qualifs">
+    <h2>2 — Qualifications (DYP)</h2>
+    <div class="actions">
+      <button id="btnGenDYP">Générer une manche DYP</button>
+    </div>
+
+    <div id="dypEquipes"></div>
+
+    <div id="zoneMatchQualif" class="match-zone"></div>
+    <div id="historiqueQualifs"></div>
+  </section>
+
+  <!-- Classement -->
+  <section id="classement">
+    <h2>Classement (qualifs)</h2>
+    <div id="tableClassement"></div>
+  </section>
+
+  <!-- Phase finale -->
+  <section id="finale">
+    <h2>3 — Phase finale (Double élimination)</h2>
+
+    <div class="row">
+      <label>Nombre de qualifiés :</label>
+      <input id="nbQualifies" type="number" value="8" min="2" />
+      <button id="btnChoisirQualifies">Sélectionner automatiquement</button>
+    </div>
+
+    <div id="qualifiesList"></div>
+
+    <div class="row">
+      <input id="ajoutQualifie" type="text" placeholder="Ajouter un qualifié (nom)" />
+      <button id="btnAddQualifie">Ajouter aux qualifiés</button>
+    </div>
+
+    <div class="actions">
+      <button id="btnStartFinale">Démarrer la phase finale</button>
+    </div>
+
+    <div id="equipesFinale"></div>
+
+    <h3>Brackets & match en cours</h3>
+    <div id="bracketsArea">
+      <div id="winnerList" class="card"><strong>Winner bracket (file)</strong><div id="winnerItems"></div></div>
+      <div id="loserList" class="card"><strong>Loser bracket (file)</strong><div id="loserItems"></div></div>
+    </div>
+
+    <div id="zoneMatchFinale" class="match-zone"></div>
+
+    <h3>Historique finale</h3>
+    <div id="historiqueFinale"></div>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>
