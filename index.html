@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tournoi Baby-Foot (Single file)</title>
+  <style>
+    :root{--bg:#f5f5f5;--text:#333;--card:#fff;--accent:#27ae60;--accent-2:#2ecc71;--muted:#7f8c8d}
+    *{box-sizing:border-box} html,body{margin:0;padding:0}
+    body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);padding:14px}
+    h1,h2,h3{text-align:center;color:#2c3e50;margin:10px 0}
+    section{background:var(--card);border-radius:10px;padding:14px;margin:14px 0;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    input[type="text"],input[type="number"],select{padding:9px;border:1px solid #ddd;border-radius:8px;flex:1 1 180px;min-width:140px}
+    button{padding:9px 12px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+    button:hover{background:var(--accent-2)} button.secondary{background:#bdc3c7;color:#2c3e50}
+    .list{display:grid;gap:8px} .badge{display:inline-block;font-size:12px;padding:4px 8px;border-radius:999px;background:#eef2f3;color:#2c3e50;margin-left:8px}
+    .card{background:#fafafa;border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:8px}
+    .match-zone{border:2px dashed #e0e0e0;border-radius:10px;padding:12px;margin-top:10px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .team{border:1px solid #e7e7e7;border-radius:8px;padding:8px;background:#fff}
+    .small{color:var(--muted);font-size:13px}
+    label{margin-right:6px}
+  </style>
+</head>
+<body>
+  <h1>Tournoi Baby-Foot</h1>
+
+  <!-- Inscriptions -->
+  <section>
+    <h2>1 — Inscriptions</h2>
+    <div class="row">
+      <input id="playerName" type="text" placeholder="Nom du joueur (ex: Axel)" />
+      <select id="playerRole">
+        <option value="A">Attaquant</option>
+        <option value="D">Défenseur</option>
+        <option value="B">Les deux</option>
+      </select>
+      <button onclick="addPlayer()">Ajouter</button>
+      <button class="secondary" onclick="resetTournament()">Réinitialiser le tournoi</button>
+    </div>
+    <div id="playerList"></div>
+  </section>
+
+  <!-- Qualifs DYP -->
+  <section>
+    <h2>2 — Qualifications (DYP)</h2>
+    <div class="row">
+      <button onclick="generateDYP()">Générer une manche DYP</button>
+      <button onclick="playNextQualifMatch()">Jouer prochain match (qualif)</button>
+    </div>
+    <div id="dypTeamsArea"></div>
+    <div id="qualifMatchArea" class="match-zone"></div>
+    <div id="qualifHistory"></div>
+    <h3>Classement (qualifs)</h3>
+    <div id="rankingArea"></div>
+  </section>
+
+  <!-- Phase finale -->
+  <section>
+    <h2>3 — Phase finale (Double élimination)</h2>
+    <div class="row">
+      <label>Nombre de qualifiés :</label>
+      <input id="numQualified" type="number" min="2" value="8" />
+      <button onclick="autoSelectQualifies()">Sélectionner auto</button>
+    </div>
+    <div class="row">
+      <input id="manualQualifyName" type="text" placeholder="Ajouter qualifier (nom)" />
+      <button onclick="addQualifierManual()">Ajouter aux qualifiés</button>
+      <button onclick="startFinalPhase()">Démarrer la finale</button>
+    </div>
+    <div id="qualifiesArea"></div>
+
+    <h3>Equipes finale</h3>
+    <div id="finalTeamsArea"></div>
+
+    <div id="bracketsArea" class="row">
+      <div style="flex:1"><strong>Winner queue</strong><div id="winnerQueue"></div></div>
+      <div style="flex:1"><strong>Loser queue</strong><div id="loserQueue"></div></div>
+    </div>
+
+    <div id="finalMatchArea" class="match-zone"></div>
+    <div id="finalHistory"></div>
+  </section>
+
+  <script>
+  /* ============ Données globales ============ */
+  const participants = []; // {name, role: 'A'|'D'|'B'}
+  const classement = {};   // name -> wins (qualifs)
+  let dypTeams = [];       // [{A,D}]
+  let dypQueue = [];       // queue of teams for qualif matches
+  let currentQualifMatch = null;
+
+  let qualifies = [];      // list of names selected for final
+  let finalTeams = [];     // [{attaquant, defenseur, note}]
+  let winnerQueue = [];    // queue of team objects
+  let loserQueue = [];     // queue of team objects
+  let currentFinalMatch = null;
+  let finalHistory = [];
+
+  /* ============ Helpers ============ */
+  function el(id){ return document.getElementById(id); }
+  function shuffle(arr){ return arr.sort(()=>Math.random()-0.5); }
+
+  /* ============ Participants UI ============ */
+  function renderParticipants(){
+    const box = el('playerList');
+    if(!participants.length){ box.innerHTML = "<p class='small'>Aucun participant.</p>"; return; }
+    box.innerHTML = "<div class='list'>" + participants.map(p=>`<div class='card'><b>${p.name}</b> <span class='badge'>${p.role==='A'?'Attaquant':p.role==='D'?'Défenseur':'Les deux'}</span></div>`).join('') + "</div>";
+  }
+
+  function addPlayer(){
+    const name = el('playerName').value.trim();
+    const role = el('playerRole').value;
+    if(!name){ alert('Entre un nom'); return; }
+    if(participants.find(p=>p.name.toLowerCase()===name.toLowerCase())){ alert('Nom déjà inscrit'); return; }
+    participants.push({name, role});
+    if(!(name in classement)) classement[name] = 0;
+    el('playerName').value = '';
+    renderParticipants();
+    renderRanking();
+  }
+
+  function resetTournament(){
+    if(!confirm('Réinitialiser le tournoi ?')) return;
+    participants.length = 0;
+    for(const k in classement) delete classement[k];
+    dypTeams = []; dypQueue = []; currentQualifMatch = null;
+    qualifies = []; finalTeams = []; winnerQueue = []; loserQueue = []; currentFinalMatch = null; finalHistory = [];
+    el('dypTeamsArea').innerHTML = ''; el('qualifMatchArea').innerHTML = ''; el('qualifHistory').innerHTML = '';
+    el('rankingArea').innerHTML = ''; el('playerList').innerHTML = ''; el('qualifiesArea').innerHTML = '';
+    el('finalTeamsArea').innerHTML = ''; el('winnerQueue').innerHTML = ''; el('loserQueue').innerHTML = ''; el('finalMatchArea').innerHTML='';
+  }
+
+  /* ============ Qualifs DYP ============ */
+  function generateDYP(){
+    if(participants.length < 2){ alert('Ajoute des participants.'); return; }
+    // split roles
+    const A = participants.filter(p=>p.role==='A').map(p=>p.name);
+    const D = participants.filter(p=>p.role==='D').map(p=>p.name);
+    const B = participants.filter(p=>p.role==='B').map(p=>p.name);
+    shuffle(A); shuffle(D); shuffle(B);
+    const teams = [];
+    // pair A+D
+    while(A.length && D.length){ teams.push({A:A.pop(), D:D.pop()}); }
+    // use B to fill D if A left
+    while(A.length && B.length){ teams.push({A:A.pop(), D:B.pop()}); }
+    // use B to fill A if D left
+    while(D.length && B.length){ teams.push({A:B.pop(), D:D.pop()}); }
+    const byes = [...A, ...D, ...B]; // leftover players -> byes
+    dypTeams = teams;
+    dypQueue = teams.slice(); // copy
+    // render
+    el('dypTeamsArea').innerHTML = '<h4>Équipes DYP (manche)</h4>' + (teams.length ? teams.map((t,i)=>`<div class="team"><b>Équipe ${i+1}</b><br/>Att: ${t.A}<br/>Def: ${t.D}</div>`).join('') : '<p class="small">Aucune équipe.</p>');
+    el('dypTeamsArea').innerHTML += byes.length ? `<p class="small">BYE (repos) : ${byes.join(', ')}</p>` : `<p class="small">Aucun bye 🎉</p>`;
+    el('qualifMatchArea').innerHTML = '';
+  }
+
+  function playNextQualifMatch(){
+    if(!dypQueue.length){ el('qualifMatchArea').innerHTML = '<p class="small">Aucun match DYP à jouer (génère une manche d’abord).</p>'; return; }
+    if(dypQueue.length >= 2){
+      const t1 = dypQueue.shift();
+      const t2 = dypQueue.shift();
+      currentQualifMatch = {t1,t2};
+    } else {
+      const t1 = dypQueue.shift();
+      currentQualifMatch = {t1, t2:t1}; // mirror if single left
+    }
+    el('qualifMatchArea').innerHTML = `
+      <div class="grid2">
+        <div class="team"><b>Équipe A</b><br/>Att: ${currentQualifMatch.t1.A}<br/>Def: ${currentQualifMatch.t1.D}</div>
+        <div class="team"><b>Équipe B</b><br/>Att: ${currentQualifMatch.t2.A}<br/>Def: ${currentQualifMatch.t2.D}</div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label>Score A</label><input id="qScoreA" type="number" value="1" min="0">
+        <label>Score B</label><input id="qScoreB" type="number" value="0" min="0">
+        <button onclick="recordQualifScore()">Valider score</button>
+      </div>
+    `;
+  }
+
+  function recordQualifScore(){
+    const sA = parseInt(el('qScoreA').value,10) || 0;
+    const sB = parseInt(el('qScoreB').value,10) || 0;
+    if(!currentQualifMatch){ alert('Aucun match en cours'); return; }
+    const {t1,t2} = currentQualifMatch;
+    // determine winner team
+    const winnerTeam = sA >= sB ? t1 : t2;
+    // increment both players wins in classement if exist
+    [winnerTeam.A, winnerTeam.D].forEach(n=>{
+      if(n in classement) classement[n] += 1;
+      else classement[n] = 1;
+    });
+    // store history
+    const record = {A1:t1.A,D1:t1.D,A2:t2.A,D2:t2.D,sA,sB,winner: sA>=sB? `${t1.A}/${t1.D}` : `${t2.A}/${t2.D}`};
+    const h = el('qualifHistory');
+    const pre = `<div class="card small"> ${record.winner} gagne (${sA}-${sB})</div>`;
+    h.innerHTML = pre + h.innerHTML;
+    currentQualifMatch = null;
+    renderRanking();
+    playNextQualifMatch();
+  }
+
+  /* ============ Classement ============ */
+  function renderRanking(){
+    const box = el('rankingArea');
+    const names = Object.keys(classement);
+    if(!names.length){ box.innerHTML = '<p class="small">Aucun score enregistré.</p>'; return; }
+    const sorted = names.sort((a,b)=>classement[b]-classement[a]);
+    box.innerHTML = '<div class="list">' + sorted.map(n=>`<div class="card"><b>${n}</b> — ${classement[n]} victoire(s)</div>`).join('') + '</div>';
+  }
+
+  /* ============ Qualifiés ============ */
+  function autoSelectQualifies(){
+    const n = Math.max(2, parseInt(el('numQualified').value,10) || 8);
+    // take top by classement, else fill randomly from participants
+    const byScore = Object.keys(classement).sort((a,b)=>classement[b]-classement[a]);
+    const pool = byScore.length ? byScore.slice() : participants.map(p=>p.name);
+    const selected = [];
+    for(let i=0;i<pool.length && selected.length<n;i++) selected.push(pool[i]);
+    if(selected.length < n){
+      const rest = participants.map(p=>p.name).filter(x=>!selected.includes(x));
+      shuffle(rest);
+      while(selected.length<n && rest.length) selected.push(rest.pop());
+    }
+    qualifies = selected;
+    renderQualifies();
+  }
+
+  function addQualifierManual(){
+    const nm = el('manualQualifyName').value.trim();
+    if(!nm) return alert('Entrez un nom');
+    if(!qualifies.includes(nm)) qualifies.push(nm);
+    el('manualQualifyName').value = '';
+    renderQualifies();
+  }
+
+  function renderQualifies(){
+    el('qualifiesArea').innerHTML = '<div class="list">' + (qualifies.length ? qualifies.map(q=>`<div class="card">${q}</div>`).join('') : '<p class="small">Aucun qualifié</p>') + '</div>';
+  }
+
+  /* ============ Phase finale ============ */
+  function startFinalPhase(){
+    if(qualifies.length < 2) return alert('Sélectionne les qualifiés (auto ou manuel)');
+    // random pairs from qualifies
+    const pool = shuffle(qualifies.slice());
+    finalTeams = [];
+    for(let i=0;i<pool.length;i+=2){
+      if(!pool[i+1]) break;
+      const n1 = pool[i], n2 = pool[i+1];
+      const p1 = participants.find(p=>p.name===n1) || {role:'B'};
+      const p2 = participants.find(p=>p.name===n2) || {role:'B'};
+      let attaq=null, def=null, note='';
+      const r1=p1.role, r2=p2.role;
+      if((r1==='A' && r2==='D')||(r1==='D' && r2==='A')){
+        attaq = r1==='A' ? n1 : n2; def = r1==='D' ? n1 : n2;
+      } else if(r1==='A' && r2==='B'){ attaq=n1; def=n2; }
+      else if(r2==='A' && r1==='B'){ attaq=n2; def=n1; }
+      else if(r1==='D' && r2==='B'){ attaq=n2; def=n1; }
+      else if(r2==='D' && r1==='B'){ attaq=n1; def=n2; }
+      else { attaq=n1; def=n2; note='Rôles à définir' }
+      finalTeams.push({attaquant:attaq, defenseur:def, note});
+    }
+    // init queues
+    winnerQueue = finalTeams.map(t=> ({...t}) );
+    loserQueue = [];
+    finalHistory = [];
+    renderFinalTeams(); renderQueues(); renderNextFinalMatch();
+  }
+
+  function renderFinalTeams(){
+    el('finalTeamsArea').innerHTML = '<div class="list">' + (finalTeams.length ? finalTeams.map((t,i)=>`<div class="card"><b>Équipe ${i+1}</b><br/>Att: ${t.attaquant}<br/>Def: ${t.defenseur}${t.note?`<div class="small">${t.note}</div>`:''}</div>`).join('') : '<p class="small">Pas d\'équipes</p>') + '</div>';
+  }
+
+  function renderQueues(){
+    el('winnerQueue').innerHTML = winnerQueue.map((t,i)=>`<div class="card small">#${i+1} ${t.attaquant}/${t.defenseur}</div>`).join('') || '<p class="small">Vide</p>';
+    el('loserQueue').innerHTML = loserQueue.map((t,i)=>`<div class="card small">#${i+1} ${t.attaquant}/${t.defenseur}</div>`).join('') || '<p class="small">Vide</p>';
+  }
+
+  function renderNextFinalMatch(){
+    if(winnerQueue.length >= 2){
+      const A = winnerQueue.shift(); const B = winnerQueue.shift();
+      currentFinalMatch = {A,B,table:'winner'};
+    } else if(loserQueue.length >= 2){
+      const A = loserQueue.shift(); const B = loserQueue.shift();
+      currentFinalMatch = {A,B,table:'loser'};
+    } else if(winnerQueue.length ===1 && loserQueue.length >=1){
+      const A = winnerQueue.shift(); const B = loserQueue.shift();
+      currentFinalMatch = {A,B,table:'winner_vs_loser'};
+    } else {
+      el('finalMatchArea').innerHTML = '<p class="small">Plus de match disponible pour l\'instant.</p>';
+      renderQueues(); renderFinalHistory();
+      return;
+    }
+    // show match
+    el('finalMatchArea').innerHTML = `
+      <div class="grid2">
+        <div class="team"><b>Équipe A</b><br/>Att: ${currentFinalMatch.A.attaquant}<br/>Def: ${currentFinalMatch.A.defenseur}</div>
+        <div class="team"><b>Équipe B</b><br/>Att: ${currentFinalMatch.B.attaquant}<br/>Def: ${currentFinalMatch.B.defenseur}</div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label>Score A</label><input id="finalScoreA" type="number" value="0" min="0">
+        <label>Score B</label><input id="finalScoreB" type="number" value="0" min="0">
+        <button onclick="validateFinalScore()">Valider</button>
+        <button onclick="forceFinalWinner('A')">Équipe A gagne</button>
+        <button onclick="forceFinalWinner('B')">Équipe B gagne</button>
+      </div>
+      <p class="small">Après validation : les défenseurs s'échangent entre les deux équipes.</p>
+    `;
+    renderQueues();
+  }
+
+  function validateFinalScore(){
+    const sA = parseInt(el('finalScoreA').value,10) || 0;
+    const sB = parseInt(el('finalScoreB').value,10) || 0;
+    const winnerSide = sA >= sB ? 'A' : 'B';
+    applyFinalResult(winnerSide, sA, sB);
+  }
+  function forceFinalWinner(side){ applyFinalResult(side, side==='A'?1:0, side==='B'?1:0); }
+
+  function applyFinalResult(winnerSide, sA, sB){
+    if(!currentFinalMatch) return alert('Aucun match final en cours');
+    const A = currentFinalMatch.A, B = currentFinalMatch.B;
+    const winner = winnerSide === 'A' ? A : B;
+    const loser  = winnerSide === 'A' ? B : A;
+    // swap defenders
+    const tmp = winner.defenseur; winner.defenseur = loser.defenseur; loser.defenseur = tmp;
+    // queue logic
+    if(currentFinalMatch.table === 'winner'){
+      winnerQueue.push(winner);
+      loserQueue.push(loser);
+    } else if(currentFinalMatch.table === 'loser'){
+      loserQueue.push(winner); // loser eliminated
+    } else if(currentFinalMatch.table === 'winner_vs_loser'){
+      // if loser (from loser queue) wins vs winner bracket team, we push winner back to winnerQueue? For simplicity:
+      // push winner to winnerQueue (continues), loser eliminated or goes to loserQueue depending on origin
+      winnerQueue.push(winner);
+      // loser would be eliminated if it was from loser queue and lost; if it was from winner, it goes to loserQueue - but here we simplify
+      // Keep simple FIFO: push loser into loserQueue if not already eliminated.
+      // (This keeps bracket moving; advanced reset rule can be added later.)
+      loserQueue.push(loser);
+    }
+    // record history
+    finalHistory.unshift({table: currentFinalMatch.table, Aatt:A.attaquant, Adef:A.defenseur, Batt:B.attaquant, Bdef:B.defenseur, sA,sB, winner: winner.attaquant + '/' + winner.defenseur});
+    currentFinalMatch = null;
+    renderFinalHistory();
+    renderQueues();
+    // next match
+    setTimeout(renderNextFinalMatch, 200);
+  }
+
+  function renderFinalHistory(){
+    el('finalHistory').innerHTML = '<h4>Historique finale</h4>' + (finalHistory.length ? finalHistory.map((m,i)=>`<div class="card small">Match ${i+1} [${m.table}] — A(${m.Aatt}/${m.Adef}) ${m.sA}-${m.sB} B(${m.Batt}/${m.Bdef}) | Vainqueur: <b>${m.winner}</b></div>`).join('') : '<p class="small">Vide</p>');
+  }
+
+  /* ============ Init small helpers ============ */
+  window.addEventListener('DOMContentLoaded', ()=>{
+    renderParticipants(); renderRanking();
+  });
+  </script>
+</body>
+</html>
