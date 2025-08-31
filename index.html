@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tournoi Baby-Foot — DYP + Double Élimination</title>
+  <style>
+    :root{
+      --bg:#0f172a; --panel:#111827; --panel-2:#0b1220;
+      --text:#e5e7eb; --muted:#9ca3af;
+      --green:#16a34a; --red:#dc2626; --blue:#2563eb; --amber:#f59e0b;
+      --border:#1f2937;
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    h1,h2,h3{margin:16px 0}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    .card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:18px;box-shadow:0 10px 25px rgba(0,0,0,.25)}
+    input,select,button{border-radius:8px;border:1px solid var(--border);background:#0b1220;color:var(--text);padding:8px 10px}
+    input[type='number']{width:70px;text-align:center}
+    button{cursor:pointer}
+    button.primary{background:var(--blue);border-color:#1d4ed8}
+    button.success{background:var(--green);border-color:#15803d}
+    button.warn{background:var(--amber);border-color:#b45309;color:#1a1300}
+    button.danger{background:var(--red);border-color:#991b1b}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .list{display:flex;flex-wrap:wrap;gap:8px}
+    .pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:#0a1020}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid var(--border);padding:8px}
+    th{background:#0d1426}
+    tr:nth-child(even){background:#0c1324}
+    .muted{color:var(--muted)}
+    .match{border:1px solid var(--border);border-radius:10px;padding:10px;margin:8px 0;background:#0b1220}
+    .teams{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .team{display:flex;gap:6px;align-items:center}
+    .badge{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
+    .wb{background:rgba(22,163,74,.15);border-color:#14532d}
+    .lb{background:rgba(220,38,38,.15);border-color:#7f1d1d}
+    .final{background:rgba(37,99,235,.15);border-color:#1e3a8a}
+    .tag{font-size:12px;color:var(--muted)}
+    .section-title{display:flex;justify-content:space-between;align-items:center}
+    .help{font-size:12px;color:var(--muted);margin-top:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Tournoi Baby-Foot</h1>
+
+    <div class="card">
+      <div class="section-title">
+        <h2>1) Inscriptions</h2>
+        <button class="danger" onclick="resetAll()">Réinitialiser le tournoi</button>
+      </div>
+      <div class="row">
+        <input id="playerName" placeholder="Nom du joueur" />
+        <select id="playerRole">
+          <option value="Attaquant">Attaquant</option>
+          <option value="Défenseur">Défenseur</option>
+          <option value="Polyvalent">Polyvalent</option>
+        </select>
+        <button class="primary" onclick="addPlayer()">Ajouter</button>
+      </div>
+      <div class="help">Astuce : les joueurs <b>Polyvalent</b> servent à équilibrer Attaquants/Défenseurs.</div>
+      <div id="playersList" class="list" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <h2>2) Qualifications — DYP (2 vs 2)</h2>
+        <div class="row">
+          <button class="primary" onclick="generateQualifRound()">Nouvelle manche</button>
+          <span class="muted" id="roundInfo"></span>
+        </div>
+      </div>
+      <div id="qualifMatches"></div>
+      <h3>Classement (qualifs)</h3>
+      <div id="ranking"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <h2>3) Phase finale — Double élimination (2 vs 2)</h2>
+      </div>
+      <div class="row">
+        <label>Nombre de finalistes (individuels, multiple de 4) :</label>
+        <input type="number" id="finalistsNumber" value="8" min="4" step="4" />
+        <button class="success" onclick="startFinals()">Démarrer la phase finale</button>
+      </div>
+      <div class="help">Rounds <b>W1, W2...</b> (Winner) et <b>L1, L2...</b> (Loser). Les gagnants avancent, les perdants descendent.</div>
+      <div id="finals"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
